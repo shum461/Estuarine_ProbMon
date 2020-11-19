@@ -1,6 +1,6 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-Estuarine Probabilistic Monitoring <a href='https://www.deq.virginia.gov/Programs/Water/WaterQualityInformationTMDLs/WaterQualityMonitoring/ProbabilisticMonitoring.aspx'><img src='figures/ProbMon.png' align="right" height="138.5" /></a>
+Estuarine Probabilistic Monitoring <a href='https://www.deq.virginia.gov/Programs/Water/WaterQualityInformationTMDLs/WaterQualityMonitoring/ProbabilisticMonitoring.aspx'><img src='figures/ProbMon.png' align="right" height="198.5" /></a>
 ============================================================================================================================================================================================================================================
 
 Overview
