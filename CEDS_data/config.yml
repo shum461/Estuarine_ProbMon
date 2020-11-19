@@ -1,0 +1,13 @@
+default:
+  connectionSettings:
+    driver: 'SQLServer' 
+    server_prod: 'DEQ-SQLODS-PROD,50000'
+    database_prod: 'ODS'
+    UID_prod: 'r_server_prod_ro'
+    PWD_prod: 'Ru3tyUnc1eG0neW11d'
+    server_test: 'WSQ04151,50000'
+    database_test: 'ODS_test'
+    UID_test: 'rserver_read_only'
+    PWD_test: 'm2TMJaRqD$m2TMJaRqD'
+    CONNECT_API_KEY: 'l3bgrioWdm58mHxrqrTJPQRou6AUKTZz'
+    CONNECT_SERVER: 'http://deq-rstudio-prod.cov.virginia.gov:3939'

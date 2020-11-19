@@ -1,0 +1,132 @@
+---
+title: "Estuarine Prob Mon"
+output: html_document
+resource_files:
+- config.yml
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(DBI)
+library(tidyverse)
+library(config)
+library(lubridate)
+library(readxl)
+library(janitor)
+library(pool)
+library(pins)
+
+source("Salinity_regime_funs.R")
+#source("file_load.R")
+options(scipen = 999)
+
+# --------------Emma connections---------------
+
+# get configuration settings
+conn <- config::get("connectionSettings")
+
+# use API key to register board
+board_register_rsconnect(key = conn$CONNECT_API_KEY,  #Sys.getenv("CONNECT_API_KEY"),
+                          server = conn$CONNECT_SERVER)#Sys.getenv("CONNECT_SERVER"))
+
+# establish db connection on server
+
+pool <- dbPool(
+  drv = odbc::odbc(),
+  Driver = "SQLServer",   # note the LACK OF space between SQL and Server ( how RStudio named driver)
+  Server = "DEQ-SQLODS-PROD,50000",
+  dbname = "ODS",
+  UID = conn$UID_prod,# use config file         #Sys.getenv("userid"), # plug this in on server
+  PWD = conn$PWD_prod, # use config file         #Sys.getenv("pwd") # plug this in on server
+  trusted_connection = "yes"
+)
+
+
+
+# -----------Pull all Estuarine ProbMon CEDS field data from all years and pin to rsconnect server----------------
+
+ProbMon_Field=pool %>%
+tbl("Wqm_Field_Data_View") %>%
+filter(Fdt_Spg_Code %in% 'C2') %>%
+as_tibble()
+
+# pin to rsconnect  
+pin(ProbMon_Field,"EstProbMon_Field_Data",board = "rsconnect")
+
+
+#------------ Pull field data and organize DO, Salinity, Temperature from CEDS-------------------------------
+
+ProbMon_Sal=pin_get("EstProbMon_Field_Data", board = "rsconnect") %>%        
+mutate(Year= year(Fdt_Date_Time)) %>%  
+#filter(Year %in% Select_Years)%>%      
+drop_na(Fdt_Salinity) %>%              
+group_by(Fdt_Sta_Id,Fdt_Date_Time) %>% 
+arrange(desc(Fdt_Depth)) %>%           # Arrange salinity measurements by depth deepest to shallowest
+slice(1) %>%                           # grab only the deepest row at which there is a salinity value.Should be 0.5 meters from bottom
+left_join(Station_data_2011_2020,
+          by=c("Fdt_Sta_Id"="STATION_ID","Year"="YEAR")) %>% # join scraped CEDS IDs to NCCA IDs stored in a CSV
+mutate(Bottom_DO=coalesce(Fdt_Do_Probe,Fdt_Do_Optical),
+       DO_Quality=NCCA_DO_fun(Bottom_DO),
+       Salinity_regime=Sal_Regime_fun(Fdt_Salinity))  %>%    # merge DO optical and DO probe if necessary
+dplyr::select(Fdt_Id,Fdt_Sta_Id,CBP_NAME,Fdt_Salinity,Salinity_regime,Bottom_DO,DO_Quality,Fdt_Temp_Celcius,Fdt_Depth,Fdt_Date_Time,Year)
+
+
+
+
+
+#------------------------------ Analytes -------------------------------------------------------------------------
+
+
+# Station ID and Field Data IDs that will be used to join analytes with field data
+ProbMon_Fdt_Ids= ProbMon_Field %>% dplyr::select(Fdt_Id,Fdt_Sta_Id,Fdt_Date_Time)
+
+
+
+# To join analytes with field data you need the Fdt_ID i.e. Ana_Sam_Fdt_Id =Fdt_Id
+DCLS_Analytes= pool %>% tbl("Wqm_Analytes_View") %>%
+filter(Ana_Sam_Fdt_Id %in% !!ProbMon_Fdt_Ids$Fdt_Id) %>%
+as_tibble()%>%
+left_join(ProbMon_Fdt_Ids,by=c("Ana_Sam_Fdt_Id"="Fdt_Id"))%>%
+mutate(Year=year(Ana_Received_Date)) 
+
+
+
+Nutrients_Sand_TOC= DCLS_Analytes_fun(DCLS_Analytes) %>%
+left_join(ProbMon_Sal,by=c("Fdt_Sta_Id","Fdt_Date_Time")) %>%
+dplyr::select(Fdt_Sta_Id,CBP_NAME,Year,everything()) %>% 
+arrange(desc(Year))
+
+# Pin to rsconnct  
+pin(Nutrients_Sand_TOC,"EstProbMon_DCLS",board = "rsconnect")
+
+
+
+#----------------------------    GIS ---------------------------------------------------------------------------
+
+## Check coordinates in Stations_data_2011_2020 against WQM_Sta_GIS_View table in CEDS
+## 
+Stations=pool %>% tbl("Wqm_Stations_View")%>%
+filter(Sta_Id %in% !!Nutrients_Sand_TOC$Fdt_Sta_Id) %>%
+collect()%>%
+mutate(Latitude=Sta_Lat_Deg + (Sta_Lat_Min/60) + (Sta_Lat_Sec/3600),
+       Longitude=Sta_Long_Deg + (Sta_Long_Min/60) + (Sta_Long_Sec/3600))%>%
+dplyr::select(Sta_Id,Sta_Desc,Sta_Rec_Code,Sta_Wsh_Code,Sta_Comment,Latitude,Longitude,Sd_Last_Sample_Date) %>%
+left_join(Station_data_2011_2020[,1:2],by=c("Sta_Id"="STATION_ID"))%>%
+dplyr::select(Sta_Id,CBP_NAME,everything()) %>%
+arrange(desc(Sd_Last_Sample_Date))
+
+
+pin(Stations,"EstProbMon_Stations",board = "rsconnect")
+
+
+
+# establish db connection on server. Need to enter credentials safely on server after upload
+#con <- DBI::dbConnect(odbc::odbc(),
+#  Driver = "SQLServer",   # note the LACK OF space between SQL and Server ( how RStudio named driver)
+ # Server= "WSQ04151,50000",
+ # Database = "ODS_test",
+  #UID = Sys.getenv("userid"),
+  #PWD = Sys.getenv("pwd") )
+
+```
