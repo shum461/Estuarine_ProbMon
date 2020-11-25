@@ -74,12 +74,11 @@ dplyr::select(Fdt_Id,Fdt_Sta_Id,CBP_NAME,Fdt_Salinity,Salinity_regime,Bottom_DO,
 
 
 
-
 #------------------------------ Analytes -------------------------------------------------------------------------
 
 
 # Station ID and Field Data IDs that will be used to join analytes with field data
-ProbMon_Fdt_Ids= ProbMon_Field %>% dplyr::select(Fdt_Id,Fdt_Sta_Id,Fdt_Date_Time)
+ProbMon_Fdt_Ids= pin_get("EstProbMon_Field_Data", board = "rsconnect") %>%  dplyr::select(Fdt_Id,Fdt_Sta_Id,Fdt_Date_Time)
 
 
 
@@ -128,5 +127,39 @@ pin(Stations,"EstProbMon_Stations",board = "rsconnect")
  # Database = "ODS_test",
   #UID = Sys.getenv("userid"),
   #PWD = Sys.getenv("pwd") )
+
+
+#============= Toxicity Testing 2016-2019 =======================
+CEDS_Stations=pin_get("EstProbMon_DCLS", board = "rsconnect") %>%
+filter(Year %in% 2016:2019)%>%
+filter(!Ana_Sam_Mrs_Container_Id_Desc %in% "EB")
+
+
+Tox_Files=readfilefun(Tox_files_path) %>%
+  mutate(Ana_Sam_Mrs_Container_Id_Desc=
+         case_when(
+           str_detect(SAMPLE_DESCRIPTION,"-S1")~"S1",
+           str_detect(SAMPLE_DESCRIPTION,"-S2") ~"S2",
+           TRUE ~ "R")) %>%
+  mutate(CBP_NAME=dupe_finder_fun(SAMPLE_DESCRIPTION)) %>%
+  filter(!str_detect(CBP_NAME,c("Control|PRESS")))%>%
+  drop_na(MEAN_SURVIVAL_PERCENT)%>%
+mutate(CBP_NAME=
+         case_when(
+  CBP_NAME=="VA09-0005A"~"VA19-0005A",
+  CBP_NAME=="VA90-0013A"~ "VA19-0013A",
+  CBP_NAME=="VA09-0013A"~ "VA19-0013A",
+  CBP_NAME=="VA19-004B"~ "VA19-0004B",
+  CBP_NAME=="VA19-002A"~ "VA19-0002A",
+  CBP_NAME=="VA19-0041"~ "VA19-0041A",
+  CBP_NAME=="VA19-003A"~ "VA19-0003A",
+  CBP_NAME=="VA18-033A"~ "VA18-0033A",
+TRUE ~ CBP_NAME )) %>%
+full_join(.,CEDS_Stations,by = c("Year","CBP_NAME"))
+
+
+pin(Tox_Files,"EstProbMon_ToxTests_2016_19",board = "rsconnect")
+
+
 
 ```

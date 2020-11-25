@@ -8,11 +8,16 @@ janitor::clean_names(.,"screaming_snake")
 
 #---------------------------------------------------------------------------------
 
+dupe_finder_fun=function(x){  
+  str_replace(x,c("-S1|-S2"),"")
+}
 
 #_____________Salinity Regime Functions______________________
 
 ## Set salinity regime based on bottom salinity 
 #See llanso_and_dauer._2002._Chesapeake Bay B-IBIfor cut offs ##
+
+
 
 Sal_Regime_fun=function(y){
   case_when(
@@ -152,9 +157,43 @@ Chla= x %>%
   return(Total)          
 }
 
-# ==============CEDS all C2 ever---- use for Tox testing determinations===============
+# ==================================================================
 
 
+#====================== Toxicity testing data=======================
+
+
+# several Station IDs don't match well
+# "Sample description" is Ches Bay IDs but there are several naming errors with each year
+# In some cases sites with duplicate tox tests (i.e. -S1 and -S2) do not have matching duplicate water chem samples (only "R" )
+# PERCENT_SURVIVAL col is just for the "A" replicate. Use "MEAN_PERCENT_SURVIVAL" for overall test
+# 2-JMS087.11	VA16-033A, VA06-0083A
+
+
+Hyalella=c("TN-16-312","TN-17-238","TN-17-296","TN-18-593","TN-19-495","TN-19-523")
+
+
+Tox_files_path="C:/Users/vvt97279/Documents/RStudio_Test/Toxicity_data"
+
+
+readfilefun=function(folderpath){
+  
+  file_list=list.files(folderpath,full.names=TRUE)
+  
+  df=map_dfr(1:length(file_list),~rio::import_list(file_list[.x],rbind=TRUE)%>%
+               mutate('Standard Deviation'=as.numeric('Standard Deviation'))%>%
+               mutate_if(is.character,list(~na_if(., "N/A")))) %>%
+    janitor::clean_names(.,"screaming_snake")%>%
+    mutate(Year=lubridate::year(START_DATE)) %>% 
+    #distinct(TEST_NUMBER,SAMPLE_DESCRIPTION,Year,.keep_all = T)
+    mutate(Organism=ifelse(TEST_NUMBER %in% Hyalella,"Hyalella","Leptocheirus"))
+  
+  
+  return(df)
+  
+}
+
+#==================================== 
 
 
 
