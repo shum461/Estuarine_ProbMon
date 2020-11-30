@@ -1,8 +1,17 @@
 ---
 title: "Estuarine Prob Mon"
-output: html_document
 resource_files:
 - config.yml
+- Toxicity_data/Copy of VADEQ Toxicity Testing Results-2017 (Corrected).xlsx
+- Toxicity_data/VADEQ Toxicity Testing Results-2016.xlsx
+- Toxicity_data/VADEQ Toxicity Testing Results-2018 (Original).xlsx
+- Toxicity_data/VADEQ Toxicity Testing Results-2019 (1).xlsx
+- Station_data_2011_2020.csv
+- Copy of VADEQ Toxicity Testing Results-2017 (Corrected).xlsx
+- VADEQ Toxicity Testing Results-2016.xlsx
+- VADEQ Toxicity Testing Results-2018 (Original).xlsx
+- VADEQ Toxicity Testing Results-2019 (1).xlsx
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -135,7 +144,7 @@ filter(Year %in% 2016:2019)%>%
 filter(!Ana_Sam_Mrs_Container_Id_Desc %in% "EB")
 
 
-Tox_Files=readfilefun(Tox_files_path) %>%
+Tox_Files=readfilefun(getwd()) %>%
   mutate(Ana_Sam_Mrs_Container_Id_Desc=
          case_when(
            str_detect(SAMPLE_DESCRIPTION,"-S1")~"S1",

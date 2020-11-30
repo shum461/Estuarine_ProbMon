@@ -168,17 +168,17 @@ Chla= x %>%
 # In some cases sites with duplicate tox tests (i.e. -S1 and -S2) do not have matching duplicate water chem samples (only "R" )
 # PERCENT_SURVIVAL col is just for the "A" replicate. Use "MEAN_PERCENT_SURVIVAL" for overall test
 # 2-JMS087.11	VA16-033A, VA06-0083A
-
+#
 
 Hyalella=c("TN-16-312","TN-17-238","TN-17-296","TN-18-593","TN-19-495","TN-19-523")
 
 
-Tox_files_path="C:/Users/vvt97279/Documents/RStudio_Test/Toxicity_data"
+Tox_files_path="C:/Users/vvt97279/Documents/RStudio_Test/CEDS_data"
 
 
 readfilefun=function(folderpath){
   
-  file_list=list.files(folderpath,full.names=TRUE)
+  file_list= list.files(folderpath,pattern="(Toxicity).*\\.(xlsx|xls)$", full.names=TRUE) 
   
   df=map_dfr(1:length(file_list),~rio::import_list(file_list[.x],rbind=TRUE)%>%
                mutate('Standard Deviation'=as.numeric('Standard Deviation'))%>%
