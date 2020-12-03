@@ -145,6 +145,10 @@ filter(Year %in% 2016:2019)%>%
 filter(!Ana_Sam_Mrs_Container_Id_Desc %in% "EB")
 
 
+# readfilefun is only using files with "Toxicity" in file name
+# list.files(getwd(),pattern="(Toxicity).*\\.(xlsx|xls)$", full.names=TRUE) 
+
+
 Tox_Files=readfilefun(getwd()) %>%
   mutate(Ana_Sam_Mrs_Container_Id_Desc=
          case_when(
@@ -170,6 +174,10 @@ full_join(.,CEDS_Stations,by = c("Year","CBP_NAME"))
 
 pin(Tox_Files,"EstProbMon_ToxTests_2016_19",board = "rsconnect")
 
-
+%>% 
+  Don_TOX_fun() %>%
+  NCCA_TOX_fun()%>%
+  Cal_TOX_fun()
+  
 
 ```
