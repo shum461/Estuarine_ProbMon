@@ -247,7 +247,21 @@ readfilefun=function(folderpath){
 # 2	Moderate 1 spp (50< corrected survivorship < 75) or slight 2 or more spp mortality                                    		
 # 3	Severe 1 ssp (corrected survivorship ≤ 50) or moderate 2 or more spp toxicity		
 
+<<<<<<< HEAD
 
+=======
+Don_TOX_fun=function(x){
+  
+  df= x %>%
+    mutate(Don_TOX_Desc=
+             case_when(
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ 0,
+               SIGNFICANTLY_DIFFERENT_Y_OR_N | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N %in% "Y" & CONTROL_CORRECTED_SURVIVAL > 75 ~ 1,
+               SIGNFICANTLY_DIFFERENT_Y_OR_N | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N %in% "Y" & CONTROL_CORRECTED_SURVIVAL <=75 & CONTROL_CORRECTED_SURVIVAL >50 ~ 2,
+               SIGNFICANTLY_DIFFERENT_Y_OR_N | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N %in% "Y" & CONTROL_CORRECTED_SURVIVAL <50 ~ 3,
+               TRUE ~ NA_real_))
+  }
+>>>>>>> 0d25fbb73e93243260059170dcc0adfde969b4fa
 
                #------------NCCA Toxicity Scoring-------------------
 
@@ -256,6 +270,7 @@ readfilefun=function(folderpath){
 #  (2) 	   If both equal Y, and control-corrected survivorship ≥ 50%, "Poor"!			
 #  (3)  	 If both equal Y, and control-corrected survivorship < 50%, "Very Poor"!			
   
+<<<<<<< HEAD
 
 
 #SIGNFICANTLY_DIFFERENT_Y_OR_N 
@@ -378,7 +393,66 @@ Matrix_score=sum((CB_WOE*CB_Weight),(MAIA_WOE*MAIA_Weight),
 
 
 #=====================================================================================
+=======
 
+
+#SIGNFICANTLY_DIFFERENT_Y_OR_N 
+#BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N
+#CONTROL_CORRECTED_SURVIVAL
+>>>>>>> 0d25fbb73e93243260059170dcc0adfde969b4fa
+
+
+NCCA_TOX_fun=function(x){
+  
+df= x %>%
+mutate(NCCA_TOX_Desc=
+case_when(
+  SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ "Good",
+  SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ "Fair",
+  SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" ~ "Fair",
+  SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" & CONTROL_CORRECTED_SURVIVAL >= 50 ~ "Poor",
+  SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" & CONTROL_CORRECTED_SURVIVAL < 50 ~ "Very Poor",
+  TRUE ~ NA_character_
+  ),NCCA_TOX_Score=
+  as.numeric(case_when(
+    NCCA_TOX_Desc=="Good"~ 0,
+    NCCA_TOX_Desc=="Fair"~ 1,
+    NCCA_TOX_Desc=="Poor"~ 2,
+    NCCA_TOX_Desc=="Very Poor"~ 3,
+    TRUE ~ NA_real_)))
+
+return(df)
+
+}
+
+
+#------------- California Toxicity categories -------------------------
+
+# control normalized =data from station/control data * 100
+# http://ftp.sccwrp.org/pub/download/DOCUMENTS/TechnicalReports/777_CASQO_TechnicalManual.pdf
+# https://oehha.ca.gov/media/downloads/ecotoxicology/general-info/marinetox3.pdf
+# Compiled from U.S. EPA 1994b, ASTM 2000e
+# http://ftp.sccwrp.org/pub/download/TOOLS/SQO/MLOE_Assessment_categories_table.pdf
+# Welch’s t-test
+#Nontoxic,
+#Low, 
+#Moderate, 
+#High
+Cal_TOX_fun=function(x){
+  
+df= x %>%
+mutate(Cal_TOX_Desc=case_when(
+  MEAN_SURVIVAL_PERCENT >80 ~ "Nontoxic",
+  CONTROL_CORRECTED_SURVIVAL >75 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="N" ~"Nontoxic",
+  CONTROL_CORRECTED_SURVIVAL >75 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="Y" ~"Low",
+  CONTROL_CORRECTED_SURVIVAL <75 & CONTROL_CORRECTED_SURVIVAL >50 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="Y" ~"Moderate",
+  CONTROL_CORRECTED_SURVIVAL <50 ~"High"))
+
+return(df)
+
+}
+  
+ 
 
 #____________________Just for toxicity salinities____________________
 # x= latest C2 file from CEDS  

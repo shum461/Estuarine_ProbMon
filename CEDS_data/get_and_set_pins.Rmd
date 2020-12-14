@@ -172,12 +172,17 @@ mutate(CBP_NAME=
 TRUE ~ CBP_NAME )) %>%  
   NCCA_TOX_fun() %>%
   Cal_TOX_fun()  %>%
-full_join(.,CEDS_Stations,by = c("Year","CBP_NAME"))
+full_join(.,CEDS_Stations,by = c("Year","CBP_NAME"))%>% 
+  Don_TOX_fun() %>%
+  NCCA_TOX_fun()%>%
+  Cal_TOX_fun()
 
 
 pin(Tox_Files,"EstProbMon_ToxTests_2016_19",board = "rsconnect")
 
 
+
+  
 
   
 
