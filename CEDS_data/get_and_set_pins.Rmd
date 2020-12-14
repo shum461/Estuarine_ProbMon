@@ -53,6 +53,7 @@ pool <- dbPool(
 
 
 
+
 # -----------Pull all Estuarine ProbMon CEDS field data from all years and pin to rsconnect server----------------
 
 ProbMon_Field=pool %>%
@@ -117,7 +118,7 @@ pin(Nutrients_Sand_TOC,"EstProbMon_DCLS",board = "rsconnect")
 ## 
 Stations=pool %>% tbl("Wqm_Stations_View")%>%
 filter(Sta_Id %in% !!Nutrients_Sand_TOC$Fdt_Sta_Id) %>%
-collect()%>%
+as_tibble()%>%
 mutate(Latitude=Sta_Lat_Deg + (Sta_Lat_Min/60) + (Sta_Lat_Sec/3600),
        Longitude=Sta_Long_Deg + (Sta_Long_Min/60) + (Sta_Long_Sec/3600))%>%
 dplyr::select(Sta_Id,Sta_Desc,Sta_Rec_Code,Sta_Wsh_Code,Sta_Comment,Latitude,Longitude,Sd_Last_Sample_Date) %>%

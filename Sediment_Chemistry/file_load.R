@@ -55,12 +55,10 @@ str_right =function(string, n) {
 }
 # ===================2019 bugs===============================
 
-# EMAP and MAIA
+#------------------- EMAP and MAIA----------------------------------
 
 NCA_MAIA_EMAP2019 =  read_excel("~/RStudio_Test/EMAP_MAIA/NCA_MAIA_EMAP2019.xlsx", 
                                                     sheet = "NCA_MAIA_EMAP2019")%>%
-dplyr::select(STATION,`DEQ Stion ID`,STATUS,MAIA_INDEX,MAIA_Status=STATUS,EMAP_INDEX,
-              EMAP_STATUS,TOTAL_IND,TOTAL_SPECIES,PIELOUS_EVENNESS_REP,TUBIFICIDAE,SPIONIDAE)%>%
   rename(Fdt_Sta_Id=`DEQ Stion ID` ) %>%
   group_by(Fdt_Sta_Id)%>%
   add_tally()%>%
@@ -71,28 +69,32 @@ dplyr::select(STATION,`DEQ Stion ID`,STATUS,MAIA_INDEX,MAIA_Status=STATUS,EMAP_I
              n==2 & str_detect(duplicates,"-S1")==FALSE ~"S2",
              n==1 ~"R"
            ))   %>%
-  dplyr::select(everything(),-STATION,-n,-duplicates)
+  left_join(stations_fix) %>%
+  dplyr::select(Fdt_Sta_Id,sort(colnames(.)),-STATION,-n,-duplicates)
 
-# AMBI and MAMBI 
+
+#------------------ AMBI and MAMBI -----------------------------------
+
 AMBI_ProbMon_2019= read_excel("~/RStudio_Test/AMBI/AMBI_ProbMon_2019.xlsx") %>%
   rename(STATIONS=`Stations( & Rep)`)%>%
   filter(!str_detect(STATIONS,"PR"))%>%
   separate(STATIONS, c("A", "B","C"),"-") %>% 
   mutate(STATION=paste0(A,"-",B)) %>%
  stringdist_left_join(stations_fix,by=c("STATION"="CBP_NAME"), max_dist = 1)%>%
-distinct(STATION,C,AMBI,.keep_all = T)%>%
-  group_by(STATION) %>%
+distinct(Fdt_Sta_Id,C,AMBI,.keep_all = T)%>%
+  group_by(Fdt_Sta_Id) %>%
   add_tally()%>%
-  mutate(duplicates=make.unique(STATION,sep="-S"),
+  mutate(duplicates=make.unique(Fdt_Sta_Id,sep="-S"),
          Ana_Sam_Mrs_Container_Id_Desc=
            case_when(
              n==2 & str_detect(duplicates,"-S1")~"S1",
              n==2 & str_detect(duplicates,"-S1")==FALSE ~"S2",
              n==1 ~"R"
            )) %>%
-  dplyr::select(Fdt_Sta_Id,CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,everything(),-A,-B,-C,-n,-duplicates)%>%
-  left_join(NCA_MAIA_EMAP2019,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc"))
+dplyr::select(Fdt_Sta_Id,sort(colnames(.)),-STATION,-A,-B,-C,-n,-duplicates)%>%
+left_join(NCA_MAIA_EMAP2019,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc"))
 
+#--------------------------------------------------------------------------
 
            
 #Individuals   =  or TOTAL_ABUND
@@ -106,38 +108,65 @@ distinct(STATION,C,AMBI,.keep_all = T)%>%
 # N_SP_REP_EPI	and TOTAL_ABUND_EPI match Dons numbers
 
 # ches bay bibi
-Bugs_2019_SMH=read_excel("~/RStudio_Test/VARIB/VARIBI5NCA_2019.xlsx") %>%
-group_by(`DEQ Station ID`)%>%
+Ches_bay_2019_SMH=read_excel("~/RStudio_Test/VARIB/VARIBI5NCA_2019.xlsx") %>%
+rename(Fdt_Sta_Id=`DEQ Station ID`)%>%
+filter(!str_detect(STATION,"PR"))%>%
+left_join(stations_fix)%>%
+distinct(Fdt_Sta_Id,ABUN_MSQ,.keep_all = T)%>%
+group_by(Fdt_Sta_Id)%>%
 add_tally() %>%
-mutate(duplicates=make.unique(`DEQ Station ID`,sep="-S"),
+mutate(duplicates=make.unique(Fdt_Sta_Id,sep="-S"),
        Ana_Sam_Mrs_Container_Id_Desc=
 case_when(
   n==2 & str_detect(duplicates,"-S1")~"S1",
   n==2 & str_detect(duplicates,"-S1")==FALSE ~"S2",
   n==1 ~"R"
-)) %>%
-mutate(Year="2019")%>%
-dplyr::select(Fdt_Sta_Id=`DEQ Station ID`,Year,B_IBI,Ana_Sam_Mrs_Container_Id_Desc,SHANNON,HABITAT,CBPSEG,BASIN,WATER_BODY  
-              ,STRATUM,-n,-duplicates) %>%
-left_join(AMBI_ProbMon_2019,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc")) %>%
-bug_scores_fun(Basin=BASIN,CB=B_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`)
-
-x,CB,MAIA,EMAP,MAMBI
-# EMAP & MAIA 
+))%>%
+dplyr::select(Fdt_Sta_Id,sort(colnames(.)),-STATION,-n,-duplicates)
 
 
+#---------------------------------------------------------------------------------------------------------------
+
+Raw_Bugs_2019=Ches_bay_2019_SMH %>%
+left_join(AMBI_ProbMon_2019,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc"))%>%
+mutate(Year=2019) 
+
+
+Clean_bugs_2019=Raw_Bugs_2019%>%
+bug_scores_fun(Basin=BASIN,CB=B_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`) %>%
+dplyr::select(CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,B_IBI,MAIA_INDEX,EMAP_INDEX,MAMBI=`M-AMBI`,Matrix_score)
+#---------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------
 
 
 
 # ===================  2018 bugs  ===============================
 
-# Ches bay Bibi
-VARIB_2018_f = read_excel("~/RStudio_Test/VARIB/VARIBI5NCA_2018.xlsx") %>%
-stringdist_left_join(eighteen,by=c("STATION"="CBP_NAME"), max_dist = 1) %>%
-distinct(CBP_NAME,DATE,REP_NUM,B_IBI,.keep_all = T)%>%
+
+
+
+NCA_MAIA_EMAP2018 = read_excel("~/RStudio_Test/EMAP_MAIA/NCA_MAIA_EMAP18new.xlsx", 
+                                                      sheet = "NCA_MAIA_EMAP18new")%>%
+  stringdist_left_join(stations_fix,by=c("STATION"="CBP_NAME"), max_dist = 1)%>%
+  distinct(STATION,DATE,REP_NUM,.keep_all = T)%>%
   group_by(Fdt_Sta_Id)%>%
-  add_tally() %>%
-  #dplyr::select(`DEQ Station ID`,n) %>%
+  add_tally()%>%
+   mutate(duplicates=make.unique(Fdt_Sta_Id,sep="-S"),
+         Ana_Sam_Mrs_Container_Id_Desc=
+           case_when(
+             n==2 & str_detect(duplicates,"-S1")~"S1",
+             n==2 & str_detect(duplicates,"-S1")==FALSE ~"S2",
+             n==1 ~"R"
+           )) %>%
+   dplyr::select(Fdt_Sta_Id,sort(colnames(.)),-STATION,-n,-duplicates)
+
+
+# AMBI and MAMBI 
+AMBI_ProbMon_2018= read_excel("~/RStudio_Test/AMBI/5. NCA2018_M_AMBI.xlsx")%>%
+stringdist_left_join(stations_fix,by=c("Stations"="CBP_NAME"), max_dist = 1) %>%
+distinct(Stations,AMBI,.keep_all = T)%>%
+group_by(Fdt_Sta_Id) %>%
+  add_tally()%>%
   mutate(duplicates=make.unique(Fdt_Sta_Id,sep="-S"),
          Ana_Sam_Mrs_Container_Id_Desc=
            case_when(
@@ -145,9 +174,39 @@ distinct(CBP_NAME,DATE,REP_NUM,B_IBI,.keep_all = T)%>%
              n==2 & str_detect(duplicates,"-S1")==FALSE ~"S2",
              n==1 ~"R"
            )) %>%
-  mutate(Year="2018",CB_weight=ifelse(CBPSEG=="CSTBY",0,2))%>%
-  dplyr::select(CBP_NAME,Fdt_Sta_Id,Year,CB_IBI=B_IBI,CB_weight,Ana_Sam_Mrs_Container_Id_Desc,SHANNON,HABITAT,CBPSEG,BASIN,WATER_BODY  
-                ,STRATUM,-n,-duplicates) 
+  dplyr::select(Fdt_Sta_Id,sort(colnames(.)),-Stations,-n,-duplicates)%>%
+  left_join(NCA_MAIA_EMAP2018,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc"))
+
+
+
+
+
+# Ches bay Bibi
+Ches_bay_2018_SMH = read_excel("~/RStudio_Test/VARIB/VARIBI5NCA_2018.xlsx") %>%
+stringdist_left_join(eighteen,by=c("STATION"="CBP_NAME"), max_dist = 1) %>%
+distinct(CBP_NAME,DATE,REP_NUM,B_IBI,.keep_all = T)%>%
+  group_by(Fdt_Sta_Id)%>%
+  add_tally() %>%
+    mutate(duplicates=make.unique(Fdt_Sta_Id,sep="-S"),
+         Ana_Sam_Mrs_Container_Id_Desc=
+           case_when(
+             n==2 & str_detect(duplicates,"-S1")~"S1",
+             n==2 & str_detect(duplicates,"-S1")==FALSE ~"S2",
+             n==1 ~"R"
+           )) %>%
+        dplyr::select(Fdt_Sta_Id,sort(colnames(.)),-STATION,-n,-duplicates)
+ 
+#-------------------------------------------------------------------------------------------------------
+Raw_Bugs_2018=Ches_bay_2018_SMH %>%
+left_join(AMBI_ProbMon_2018,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc"))%>%
+mutate(Year=2018)
+
+
+Clean_bugs_2018=Raw_Bugs_2018%>%
+bug_scores_fun(Basin=BASIN,CB=B_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`) %>%
+dplyr::select(CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,B_IBI,MAIA_INDEX,EMAP_INDEX,MAMBI=`M-AMBI`,Matrix_score)
+
+
 
 
 # ============== 2017 bugs=========================================

@@ -56,7 +56,6 @@ Hyalella=c("TN-16-312","TN-17-238","TN-17-296","TN-18-593","TN-19-495","TN-19-52
 
 
 Tox_files_path="C:/Users/vvt97279/Documents/RStudio_Test/Toxicity_data"
-Tox_files_list=list.files(Tox_files_path,full.names=TRUE)
 
 
 readfilefun=function(folderpath){
@@ -75,7 +74,10 @@ df=map_dfr(1:length(file_list),~rio::import_list(file_list[.x],rbind=TRUE)%>%
 return(df)
 
 }
-  
+
+#====================================  
+
+
 #====================================
   New_Files=readfilefun(Tox_files_path) %>%
   mutate(Ana_Sam_Mrs_Container_Id_Desc=
@@ -99,7 +101,7 @@ mutate(CBP_NAME=
 TRUE ~ CBP_NAME
 ))
                     
-
+full_join(.,CEDS_Stations,by = c("Year","CBP_NAME")) 
 
 # missing tox ? VA16-033A
 
