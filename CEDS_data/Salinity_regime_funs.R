@@ -1,7 +1,6 @@
 
 
 
-
 #~~~~~~~~~~~~~  DEQ Station IDs (CEDS) with NCCA or Bay Program IDs  ~~~
 Station_data_2011_2020= read_csv("Station_data_2011_2020.csv") %>%
 janitor::clean_names(.,"screaming_snake") 
@@ -11,6 +10,14 @@ janitor::clean_names(.,"screaming_snake")
 dupe_finder_fun=function(x){  
   str_replace(x,c("-S1|-S2"),"")
 }
+
+#=======================================
+
+not_in_fun=function(x,y){
+  
+  x[which(!x %in% y)]
+}
+#=======================================
 
 #_____________Salinity Regime Functions______________________
 
@@ -182,12 +189,12 @@ Summarized_Analytes= x %>%
               Percent_Sand=sum(Ana_Value[Pg_Storet_Code %in% "82007"])) %>%
 
   mutate(TOC_Quality=TOC_fun(TOC),
-         DIN_Quality=DIN_fun(Dis_Inorg_N),
-  DIP_Quality=DIP_fun(Dis_Inorg_P),
-  Chla_Quality=NCCA_Chla_fun(Chlorophyll),
-  Entero_Quality=Entero_fun(Enterococci),
-  Ecoli_Quality=Ecoli_fun(Ecoli),
-  Subtrate_Type=Percent_Sand_fun(Percent_Sand)) 
+          DIN_Quality=DIN_fun(Dis_Inorg_N),
+          DIP_Quality=DIP_fun(Dis_Inorg_P),
+          Chla_Quality=NCCA_Chla_fun(Chlorophyll),
+          Entero_Quality=Entero_fun(Enterococci),
+          Ecoli_Quality=Ecoli_fun(Ecoli),
+          Subtrate_Type=Percent_Sand_fun(Percent_Sand)) 
   
   
    
@@ -214,12 +221,12 @@ return(Summarized_Analytes)
 # 2-JMS087.11	VA16-033A, VA06-0083A
 
 
-Hyalella=c("TN-16-312","TN-17-238","TN-17-296","TN-18-593","TN-19-495","TN-19-523")
+Hyalella=c("TN-16-312","TN-17-238","TN-17-296","TN-18-593","TN-19-495",
+           "TN-19-523","TN-20-466","TN-20-553")
 
+Tox_files_path="C:/Users/vvt97279/Documents/RStudio_Test/ToxTesting"
 
-Tox_files_path="C:/Users/vvt97279/Documents/RStudio_Test/CEDS_data"
-
-
+#======================================================================
 readfilefun=function(folderpath){
   
   file_list= list.files(folderpath,pattern="(Toxicity).*\\.(xlsx|xls)$", full.names=TRUE) 
@@ -237,6 +244,9 @@ readfilefun=function(folderpath){
   
 }
 
+#==================================================
+              
+      
 #=================================================== 
 
 #--------------Don Toxicity Scoring------------------ 
@@ -247,18 +257,16 @@ readfilefun=function(folderpath){
 # 2	Moderate 1 spp (50< corrected survivorship < 75) or slight 2 or more spp mortality                                    		
 # 3	Severe 1 ssp (corrected survivorship ≤ 50) or moderate 2 or more spp toxicity		
 
-<<<<<<< HEAD
 
-=======
 Don_TOX_fun=function(x){
   
   df= x %>%
     mutate(Don_TOX_Desc=
              case_when(
                SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ 0,
-               SIGNFICANTLY_DIFFERENT_Y_OR_N | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N %in% "Y" & CONTROL_CORRECTED_SURVIVAL > 75 ~ 1,
-               SIGNFICANTLY_DIFFERENT_Y_OR_N | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N %in% "Y" & CONTROL_CORRECTED_SURVIVAL <=75 & CONTROL_CORRECTED_SURVIVAL >50 ~ 2,
-               SIGNFICANTLY_DIFFERENT_Y_OR_N | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N %in% "Y" & CONTROL_CORRECTED_SURVIVAL <50 ~ 3,
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N =="Y" & CONTROL_CORRECTED_SURVIVAL > 75 ~ 1,
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N =="Y" & CONTROL_CORRECTED_SURVIVAL <=75 & CONTROL_CORRECTED_SURVIVAL >50 ~ 2,
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N =="Y" & CONTROL_CORRECTED_SURVIVAL <50 ~ 3,
                TRUE ~ NA_real_))
   }
 >>>>>>> 0d25fbb73e93243260059170dcc0adfde969b4fa
@@ -270,8 +278,6 @@ Don_TOX_fun=function(x){
 #  (2) 	   If both equal Y, and control-corrected survivorship ≥ 50%, "Poor"!			
 #  (3)  	 If both equal Y, and control-corrected survivorship < 50%, "Very Poor"!			
   
-<<<<<<< HEAD
-
 
 #SIGNFICANTLY_DIFFERENT_Y_OR_N 
 #BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N
@@ -328,7 +334,68 @@ return(df)
 
 }
   
- 
+#=====================================================================================
+=======
+  
+  
+  #SIGNFICANTLY_DIFFERENT_Y_OR_N 
+  #BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N
+  #CONTROL_CORRECTED_SURVIVAL
+  >>>>>>> 0d25fbb73e93243260059170dcc0adfde969b4fa
+
+
+NCCA_TOX_fun=function(x){
+  
+  df= x %>%
+    mutate(NCCA_TOX_Desc=
+             case_when(
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ "Good",
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ "Fair",
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" ~ "Fair",
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" & CONTROL_CORRECTED_SURVIVAL >= 50 ~ "Poor",
+               SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" & CONTROL_CORRECTED_SURVIVAL < 50 ~ "Very Poor",
+               TRUE ~ NA_character_
+             ),NCCA_TOX_Score=
+             as.numeric(case_when(
+               NCCA_TOX_Desc=="Good"~ 0,
+               NCCA_TOX_Desc=="Fair"~ 1,
+               NCCA_TOX_Desc=="Poor"~ 2,
+               NCCA_TOX_Desc=="Very Poor"~ 3,
+               TRUE ~ NA_real_)))
+  
+  return(df)
+  
+}
+
+
+#------------- California Toxicity categories -------------------------
+
+# control normalized =data from station/control data * 100
+# http://ftp.sccwrp.org/pub/download/DOCUMENTS/TechnicalReports/777_CASQO_TechnicalManual.pdf
+# https://oehha.ca.gov/media/downloads/ecotoxicology/general-info/marinetox3.pdf
+# Compiled from U.S. EPA 1994b, ASTM 2000e
+# http://ftp.sccwrp.org/pub/download/TOOLS/SQO/MLOE_Assessment_categories_table.pdf
+# Welch’s t-test
+#Nontoxic,
+#Low, 
+#Moderate, 
+#High
+Cal_TOX_fun=function(x){
+  
+  df= x %>%
+    mutate(Cal_TOX_Desc=case_when(
+      MEAN_SURVIVAL_PERCENT >80 ~ "Nontoxic",
+      CONTROL_CORRECTED_SURVIVAL >75 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="N" ~"Nontoxic",
+      CONTROL_CORRECTED_SURVIVAL >75 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="Y" ~"Low",
+      CONTROL_CORRECTED_SURVIVAL <75 & CONTROL_CORRECTED_SURVIVAL >50 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="Y" ~"Moderate",
+      CONTROL_CORRECTED_SURVIVAL <50 ~"High"))
+  
+  return(df)
+  
+}
+#==========================================
+
+
 #============================= B-IBI ===================================================
 
 
@@ -387,72 +454,75 @@ Matrix_score=sum((CB_WOE*CB_Weight),(MAIA_WOE*MAIA_Weight),
 }
 
 
+#================================================================================================
 
 
 
+#================  Sediment Chemistry Funs ===========================================================
 
-
-#=====================================================================================
-=======
-
-
-#SIGNFICANTLY_DIFFERENT_Y_OR_N 
-#BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N
-#CONTROL_CORRECTED_SURVIVAL
->>>>>>> 0d25fbb73e93243260059170dcc0adfde969b4fa
-
-
-NCCA_TOX_fun=function(x){
+mutate_metals_fun=function(df,CAS,Result,Analyte,Units){
   
-df= x %>%
-mutate(NCCA_TOX_Desc=
-case_when(
-  SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ "Good",
-  SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="N" ~ "Fair",
-  SIGNFICANTLY_DIFFERENT_Y_OR_N=="N" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" ~ "Fair",
-  SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" & CONTROL_CORRECTED_SURVIVAL >= 50 ~ "Poor",
-  SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" & BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N=="Y" & CONTROL_CORRECTED_SURVIVAL < 50 ~ "Very Poor",
-  TRUE ~ NA_character_
-  ),NCCA_TOX_Score=
-  as.numeric(case_when(
-    NCCA_TOX_Desc=="Good"~ 0,
-    NCCA_TOX_Desc=="Fair"~ 1,
-    NCCA_TOX_Desc=="Poor"~ 2,
-    NCCA_TOX_Desc=="Very Poor"~ 3,
-    TRUE ~ NA_real_)))
-
-return(df)
-
+  CAS=enquo(CAS) 
+  Result=enquo(Result)
+  Units=enquo(Units)
+  Analyte=enquo(Analyte)
+  
+  df %>%
+    mutate_if(is.character, ~gsub('[^ -~]', '', .))%>%
+    mutate_if(is.character,~gsub("<U\\+00B4>", "", .))%>%
+    mutate_at(vars(contains('Date')|contains('date')),~lubridate::mdy(.))%>%
+    mutate(Class=case_when(
+      !!Analyte %in% metals_CAS$NAME~ "METAL",
+      !!CAS %in% PCB_Congener_CAS$CAS  & str_detect(!!Analyte,"Surr")==F | !!Analyte %in% "2,3,4,4',5-PeCB1,2"~ "PCB",
+      !!Analyte %in% Pesticides_CAS$Name | !!Analyte %in% "Hexachlorocyclohexane" ~ "PESTICIDE",
+      !!Analyte %in% PAHs_CAS$PAH ~ "PAH",
+      
+      TRUE ~ NA_character_),
+      Result_SMH=case_when(Class=="METAL" & !!Units %in% c("ug/Kg-dry","µg/Kg-dry") ~ !!Result/1000,
+                           TRUE ~ !!Result ),
+      Units_SMH=case_when(Class=="METAL" ~ "mg/Kg-dry",
+                          !!Units %in% "ug/Kg-dry" ~ "µg/Kg-dry",
+                          TRUE ~ !!Units ))
+  
 }
 
+#=============================================================================================
+#============================Sediment Chemistry=================================================================
 
-#------------- California Toxicity categories -------------------------
-
-# control normalized =data from station/control data * 100
-# http://ftp.sccwrp.org/pub/download/DOCUMENTS/TechnicalReports/777_CASQO_TechnicalManual.pdf
-# https://oehha.ca.gov/media/downloads/ecotoxicology/general-info/marinetox3.pdf
-# Compiled from U.S. EPA 1994b, ASTM 2000e
-# http://ftp.sccwrp.org/pub/download/TOOLS/SQO/MLOE_Assessment_categories_table.pdf
-# Welch’s t-test
-#Nontoxic,
-#Low, 
-#Moderate, 
-#High
-Cal_TOX_fun=function(x){
+Full= function(x){
   
-df= x %>%
-mutate(Cal_TOX_Desc=case_when(
-  MEAN_SURVIVAL_PERCENT >80 ~ "Nontoxic",
-  CONTROL_CORRECTED_SURVIVAL >75 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="N" ~"Nontoxic",
-  CONTROL_CORRECTED_SURVIVAL >75 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="Y" ~"Low",
-  CONTROL_CORRECTED_SURVIVAL <75 & CONTROL_CORRECTED_SURVIVAL >50 & SIGNFICANTLY_DIFFERENT_Y_OR_N =="Y" ~"Moderate",
-  CONTROL_CORRECTED_SURVIVAL <50 ~"High"))
-
-return(df)
-
-}
+  Sed_Chem_Data = x %>% 
+    mutate_if(is.character, ~gsub('[^ -~]', '', .))%>%
+    mutate_if(is.character,~gsub("<U\\+00B4>", "", .))%>%
+    mutate_metals_fun(CAS,Result,Analyte,Units) %>%
+    left_join(PAHs_CAS,by=c("Analyte"="PAH","CAS")) 
   
- 
+  
+  Totals=Sed_Chem_Data %>%
+    group_by(Fdt_Sta_Id,Ana_Sam_Mrs_Container_Id_Desc,Year)%>%
+    summarise(Total_LMW_PAHs = sum(Result_SMH[which(Class=="PAH" & TYPE=="LMW")]),
+              Total_HMW_PAHs=sum(Result_SMH[which(Class=="PAH" & TYPE=="HMW")]),
+              Total_PAHs=Total_LMW_PAHs+Total_HMW_PAHs,
+              Total_PCBs=sum(Result_SMH[which(Class=="PCB")]),
+              Total_Chlorodane= sum(Result_SMH[which(CAS %in% Total_Chlorodanes)]),
+              Total_DDT= sum(Result_SMH[which(CAS %in% Total_DDTs)]))%>%
+    gather(Analyte,Result_SMH, Total_LMW_PAHs:Total_DDT) %>%
+    mutate(Class="Totals",Units_SMH="µg/Kg-dry")
+  
+  Modified_Sed_Chem_Data =
+    bind_rows(Sed_Chem_Data,Totals) %>%
+    left_join(ERM_PEC_PEL,by="Analyte")%>%
+    mutate(ERM_Q=Result_SMH/ERM,PEC_Q=Result_SMH/PEC,
+           ERM_PEC_min_Q=Result_SMH/ERM_PEC_min,
+           PEL_Q=Result_SMH/PEL,ERL_Q=Result_SMH/ERL)%>%
+    group_by(ClientSampID,Year)
+  
+  return(Modified_Sed_Chem_Data)
+}          
+
+#=============================================================================================
+
+
 
 #____________________Just for toxicity salinities____________________
 # x= latest C2 file from CEDS  
