@@ -2,15 +2,6 @@
 title: "Estuarine Prob Mon"
 resource_files:
 - config.yml
-- Toxicity_data/Copy of VADEQ Toxicity Testing Results-2017 (Corrected).xlsx
-- Toxicity_data/VADEQ Toxicity Testing Results-2016.xlsx
-- Toxicity_data/VADEQ Toxicity Testing Results-2018 (Original).xlsx
-- Toxicity_data/VADEQ Toxicity Testing Results-2019 (1).xlsx
-- Station_data_2011_2020.csv
-- Copy of VADEQ Toxicity Testing Results-2017 (Corrected).xlsx
-- VADEQ Toxicity Testing Results-2016.xlsx
-- VADEQ Toxicity Testing Results-2018 (Original).xlsx
-- VADEQ Toxicity Testing Results-2019 (1).xlsx
 output: html_document
 ---
 
@@ -29,6 +20,10 @@ library(pins)
 source("Salinity_regime_funs.R")
 #source("file_load.R")
 options(scipen = 999)
+
+# Master list of CEDS Stations IDs and Ches Bay Site Names
+Station_data_2011_2020=pin_get("EstProbMon_Stations_Summary",board="rsconnect")
+
 
 # --------------Emma connections---------------
 
@@ -56,6 +51,8 @@ pool <- dbPool(
 
 # -----------Pull all Estuarine ProbMon CEDS field data from all years and pin to rsconnect server----------------
 
+# Full field data, profile at all depths
+
 ProbMon_Field=pool %>%
 tbl("Wqm_Field_Data_View") %>%
 filter(Fdt_Spg_Code %in% 'C2') %>%
@@ -67,19 +64,23 @@ pin(ProbMon_Field,"EstProbMon_Field_Data",board = "rsconnect")
 
 #------------ Pull field data and organize DO, Salinity, Temperature from CEDS-------------------------------
 
+# Filtered field data, deepest depth only
+
 ProbMon_Sal=pin_get("EstProbMon_Field_Data", board = "rsconnect") %>%        
-mutate(Year= year(Fdt_Date_Time)) %>%  
+mutate(Year= year(Fdt_Date_Time)) %>%
+mutate(Fdt_Salinity=ifelse(Fdt_Sta_Id %in% "2-XQW001.18"& Fdt_Do_Optical>0,0.08,Fdt_Salinity))%>%
 #filter(Year %in% Select_Years)%>%      
-drop_na(Fdt_Salinity) %>%              
-group_by(Fdt_Sta_Id,Fdt_Date_Time) %>% 
+drop_na(Fdt_Salinity) %>%
+  left_join(Station_data_2011_2020,
+          by=c("Fdt_Sta_Id"="STATION_ID","Year"="YEAR"))%>%
+mutate(Date=as.Date(ymd_hms(Fdt_Date_Time)))%>%
+group_by(Fdt_Sta_Id,Date) %>% 
 arrange(desc(Fdt_Depth)) %>%           # Arrange salinity measurements by depth deepest to shallowest
-slice(1) %>%                           # grab only the deepest row at which there is a salinity value.Should be 0.5 meters from bottom
-left_join(Station_data_2011_2020,
-          by=c("Fdt_Sta_Id"="STATION_ID","Year"="YEAR")) %>% # join scraped CEDS IDs to NCCA IDs stored in a CSV
+slice(1) %>%                           # grab only the deepest row at which there is a salinity 
 mutate(Bottom_DO=coalesce(Fdt_Do_Probe,Fdt_Do_Optical),
        DO_Quality=NCCA_DO_fun(Bottom_DO),
        Salinity_regime=Sal_Regime_fun(Fdt_Salinity))  %>%    # merge DO optical and DO probe if necessary
-dplyr::select(Fdt_Id,Fdt_Sta_Id,CBP_NAME,Fdt_Salinity,Salinity_regime,Bottom_DO,DO_Quality,Fdt_Temp_Celcius,Fdt_Depth,Fdt_Date_Time,Year)
+dplyr::select(Fdt_Id,Fdt_Sta_Id,CBP_NAME,Fdt_Salinity,Salinity_regime,Bottom_DO,DO_Quality,Fdt_Temp_Celcius,Fdt_Depth,Fdt_Date_Time,Year,Date)
 
 
 
@@ -89,7 +90,7 @@ dplyr::select(Fdt_Id,Fdt_Sta_Id,CBP_NAME,Fdt_Salinity,Salinity_regime,Bottom_DO,
 
 # Station ID and Field Data IDs that will be used to join analytes with field data
 ProbMon_Fdt_Ids= pin_get("EstProbMon_Field_Data", board = "rsconnect") %>%  
-  dplyr::select(Fdt_Id,Fdt_Sta_Id,Fdt_Date_Time)
+dplyr::select(Fdt_Id,Fdt_Sta_Id,Fdt_Date_Time)
 
 
 
@@ -98,17 +99,20 @@ DCLS_Analytes= pool %>% tbl("Wqm_Analytes_View") %>%
 filter(Ana_Sam_Fdt_Id %in% !!ProbMon_Fdt_Ids$Fdt_Id) %>%
 as_tibble()%>%
 left_join(ProbMon_Fdt_Ids,by=c("Ana_Sam_Fdt_Id"="Fdt_Id"))%>%
-mutate(Year=year(Ana_Received_Date)) 
-
+mutate(Year=year(Ana_Received_Date)) %>%
+mutate(Ana_Sam_Fdt_Id=case_when(
+CBP_NAME=="NCA20_VA-10001" & Fdt_Salinity==23.29 ~"V1",
+CBP_NAME=="NCA20_VA-10001" & Fdt_Salinity==23.63 ~"V2",
+TRUE~Ana_Sam_Fdt_Id))
 
 
 Nutrients_Sand_TOC= DCLS_Analytes_fun(DCLS_Analytes) %>%
-left_join(ProbMon_Sal,by=c("Fdt_Sta_Id","Fdt_Date_Time")) %>%
+left_join(ProbMon_Sal,by=c("Fdt_Sta_Id","Date")) %>%
 dplyr::select(Fdt_Sta_Id,CBP_NAME,Year,everything()) %>% 
 arrange(desc(Year))
 
 # Pin to rsconnct  
-pin(Nutrients_Sand_TOC,"EstProbMon_DCLS",board = "rsconnect")
+pin(Nutrients_Sand_TOC,"EstProbMon_DCLS_Params",board = "rsconnect")
 
 
 
@@ -116,18 +120,27 @@ pin(Nutrients_Sand_TOC,"EstProbMon_DCLS",board = "rsconnect")
 
 ## Check coordinates in Stations_data_2011_2020 against WQM_Sta_GIS_View table in CEDS
 ## 
-Stations=pool %>% tbl("Wqm_Stations_View")%>%
-filter(Sta_Id %in% !!Nutrients_Sand_TOC$Fdt_Sta_Id) %>%
-as_tibble()%>%
-mutate(Latitude=Sta_Lat_Deg + (Sta_Lat_Min/60) + (Sta_Lat_Sec/3600),
-       Longitude=Sta_Long_Deg + (Sta_Long_Min/60) + (Sta_Long_Sec/3600))%>%
-dplyr::select(Sta_Id,Sta_Desc,Sta_Rec_Code,Sta_Wsh_Code,Sta_Comment,Latitude,Longitude,Sd_Last_Sample_Date) %>%
-left_join(Station_data_2011_2020[,1:2],by=c("Sta_Id"="STATION_ID"))%>%
-dplyr::select(Sta_Id,CBP_NAME,everything()) %>%
-arrange(desc(Sd_Last_Sample_Date))
 
 
-pin(Stations,"EstProbMon_Stations",board = "rsconnect")
+
+emma_stations=pin_get("ejones/WQM-Station-Full",board="rsconnect") %>%
+filter(WQM_YRS_SPG_CODE=="C2")%>%
+left_join(Station_data_2011_2020,by=c("WQM_STA_ID"="STATION_ID"))%>%
+distinct(YEAR,WQM_STA_ID,.keep_all = T)%>%
+dplyr::select(WQM_STA_ID,CBP_NAME,YEAR,everything())%>%
+arrange(desc(YEAR))
+
+
+pin(emma_stations,"EstProbMon_Stations",board = "rsconnect")
+
+
+
+# Stations=pool %>% tbl("Wqm_Stations_View")%>
+# filter(Sta_Id %in% !!Nutrients_Sand_TOC$Fdt_Sta_Id) %>%
+# as_tibble()%>%
+# mutate(Latitude=Sta_Lat_Deg + (Sta_Lat_Min/60) + (Sta_Lat_Sec/3600),
+#       Longitude=Sta_Long_Deg + (Sta_Long_Min/60) + (Sta_Long_Sec/3600))%>%
+# dplyr::select(Sta_Id,Sta_Desc,Sta_Rec_Code,Sta_Wsh_Code,Sta_Comment,Latitude,Longitude)
 
 
 
@@ -141,49 +154,7 @@ pin(Stations,"EstProbMon_Stations",board = "rsconnect")
 #
 
 #============= Toxicity Testing 2016-2019 =======================
-CEDS_Stations=pin_get("EstProbMon_DCLS", board = "rsconnect") %>%
-filter(Year %in% 2016:2019)%>%
-filter(!Ana_Sam_Mrs_Container_Id_Desc %in% "EB")
 
 
-# readfilefun is only using files with "Toxicity" in file name
-# list.files(getwd(),pattern="(Toxicity).*\\.(xlsx|xls)$", full.names=TRUE) 
-
-
-Tox_Files=readfilefun(getwd()) %>%
-  mutate(Ana_Sam_Mrs_Container_Id_Desc=
-         case_when(
-           str_detect(SAMPLE_DESCRIPTION,"-S1")~"S1",
-           str_detect(SAMPLE_DESCRIPTION,"-S2") ~"S2",
-           TRUE ~ "R")) %>%
-  mutate(CBP_NAME=dupe_finder_fun(SAMPLE_DESCRIPTION)) %>%
-  filter(!str_detect(CBP_NAME,c("Control|PRESS")))%>%
-  drop_na(MEAN_SURVIVAL_PERCENT)%>%
-mutate(CBP_NAME=
-         case_when(
-  CBP_NAME=="VA09-0005A"~"VA19-0005A",
-  CBP_NAME=="VA90-0013A"~ "VA19-0013A",
-  CBP_NAME=="VA09-0013A"~ "VA19-0013A",
-  CBP_NAME=="VA19-004B"~ "VA19-0004B",
-  CBP_NAME=="VA19-002A"~ "VA19-0002A",
-  CBP_NAME=="VA19-0041"~ "VA19-0041A",
-  CBP_NAME=="VA19-003A"~ "VA19-0003A",
-  CBP_NAME=="VA18-033A"~ "VA18-0033A",
-TRUE ~ CBP_NAME )) %>%  
-  NCCA_TOX_fun() %>%
-  Cal_TOX_fun()  %>%
-full_join(.,CEDS_Stations,by = c("Year","CBP_NAME"))%>% 
-  Don_TOX_fun() %>%
-  NCCA_TOX_fun()%>%
-  Cal_TOX_fun()
-
-
-pin(Tox_Files,"EstProbMon_ToxTests_2016_19",board = "rsconnect")
-
-
-
-  
-
-  
 
 ```
