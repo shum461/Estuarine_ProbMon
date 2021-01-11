@@ -2,8 +2,8 @@
 
 
 #~~~~~~~~~~~~~  DEQ Station IDs (CEDS) with NCCA or Bay Program IDs  ~~~
-Station_data_2011_2020= read_csv("Station_data_2011_2020.csv") %>%
-janitor::clean_names(.,"screaming_snake") 
+#Station_data_2011_2020= read_csv("Station_data_2011_2020.csv") %>%
+#janitor::clean_names(.,"screaming_snake") 
 
 #---------------------------------------------------------------------------------
 
