@@ -269,7 +269,8 @@ Don_TOX_fun=function(x){
                SIGNFICANTLY_DIFFERENT_Y_OR_N=="Y" | BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N =="Y" & CONTROL_CORRECTED_SURVIVAL <50 ~ 3,
                TRUE ~ NA_real_))
   }
->>>>>>> 0d25fbb73e93243260059170dcc0adfde969b4fa
+
+
 
                #------------NCCA Toxicity Scoring-------------------
 
@@ -335,13 +336,12 @@ return(df)
 }
   
 #=====================================================================================
-=======
+
   
   
   #SIGNFICANTLY_DIFFERENT_Y_OR_N 
   #BIOLOGICALLY_SIGNIFICANT_80_PERCENT_Y_OR_N
   #CONTROL_CORRECTED_SURVIVAL
-  >>>>>>> 0d25fbb73e93243260059170dcc0adfde969b4fa
 
 
 NCCA_TOX_fun=function(x){
