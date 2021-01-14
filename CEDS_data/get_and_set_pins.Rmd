@@ -21,8 +21,6 @@ source("Salinity_regime_funs.R")
 #source("file_load.R")
 options(scipen = 999)
 
-# Master list of CEDS Stations IDs and Ches Bay Site Names
-Station_data_2011_2020=pin_get("EstProbMon_Stations_Summary",board="rsconnect")
 
 
 # --------------Emma connections---------------
@@ -47,6 +45,8 @@ pool <- dbPool(
 )
 
 
+# Master list of CEDS Stations IDs and Ches Bay Site Names
+Station_data_2011_2020=pin_get("EstProbMon_Stations_Summary",board="rsconnect")
 
 
 # -----------Pull all Estuarine ProbMon CEDS field data from all years and pin to rsconnect server----------------
@@ -99,15 +99,15 @@ DCLS_Analytes= pool %>% tbl("Wqm_Analytes_View") %>%
 filter(Ana_Sam_Fdt_Id %in% !!ProbMon_Fdt_Ids$Fdt_Id) %>%
 as_tibble()%>%
 left_join(ProbMon_Fdt_Ids,by=c("Ana_Sam_Fdt_Id"="Fdt_Id"))%>%
-mutate(Year=year(Ana_Received_Date)) %>%
-mutate(Ana_Sam_Fdt_Id=case_when(
-CBP_NAME=="NCA20_VA-10001" & Fdt_Salinity==23.29 ~"V1",
-CBP_NAME=="NCA20_VA-10001" & Fdt_Salinity==23.63 ~"V2",
-TRUE~Ana_Sam_Fdt_Id))
+mutate(Year=year(Ana_Received_Date))
 
 
 Nutrients_Sand_TOC= DCLS_Analytes_fun(DCLS_Analytes) %>%
 left_join(ProbMon_Sal,by=c("Fdt_Sta_Id","Date")) %>%
+#mutate(Ana_Sam_Mrs_Container_Id_Desc=case_when(
+#CBP_NAME=="NCA20_VA-10001" & Fdt_Salinity==23.29 ~"V1",
+#CBP_NAME=="NCA20_VA-10001" & Fdt_Salinity==23.63 ~"V2",
+#TRUE~Ana_Sam_Mrs_Container_Id_Desc))%>%
 dplyr::select(Fdt_Sta_Id,CBP_NAME,Year,everything()) %>% 
 arrange(desc(Year))
 
@@ -154,6 +154,7 @@ pin(emma_stations,"EstProbMon_Stations",board = "rsconnect")
 #
 
 #============= Toxicity Testing 2016-2019 =======================
+
 
 
 
