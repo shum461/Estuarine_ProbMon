@@ -5,7 +5,12 @@
 # check units are in mg/kg (ppm) for metals and ug/kg (ppb) for PAH & PCB
 
 ERM_PEC_PEL = read_csv("App_lookup_Tables/ERM_PEC_PEL.csv")%>%
-mutate(ERM_PEC_min=ifelse(ERM>0 & ERM<PEC,ERM,PEC))%>%
+mutate(ERM_PEC_min=case_when(
+is.na(ERM)==T ~ PEC,
+is.na(PEC)==T ~ ERM,
+ERM>PEC~PEC,
+PEC>ERM~ERM,
+TRUE ~ NA_real_))%>%
 janitor::clean_names(.,"screaming_snake")
 
 #~~~~~~~~~~~~~  DEQ Station IDs (CEDS) with NCCA or Bay Program IDs  ~~~
@@ -44,7 +49,7 @@ Total_PCBs=PCBs_CAS$CAS
 
 #============Sediment Chemistry Original Files ====================================
 
-Sed_Chem_2017_18_19 = read_csv("Sed_Chem_2017_18_19.csv")
+#Sed_Chem_2017_18_19 = read_csv("Sed_Chem_2017_18_19.csv")
 
 
 
