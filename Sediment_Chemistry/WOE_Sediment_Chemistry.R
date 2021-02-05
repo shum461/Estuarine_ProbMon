@@ -37,9 +37,9 @@ options(scipen = 999)
 
 #=====================load pins from rsconnect===============================
 Sed_Chem=pin_get("EstProbMon_Sed_Chem_2015_2019",board="rsconnect")
-stations_summary=pin_get("EstProbMon_Stations_Summary",board="rsconnect")
-DCLS_params=pin_get("EstProbMon_DCLS_Params",board="rsconnect") # used for salinity regime
+DCLS_params=pin_get("EstProbMon_DCLS_Params",board="rsconnect")
 
+stations_summary=pin_get("EstProbMon_Stations_Summary",board="rsconnect")
 
 #====== Clean names, join chemicals to lookup table screening values =========
 Sed_Chem_all=Sed_Chem %>% 
@@ -57,17 +57,39 @@ TRUE~ CBP_NAME))%>%
 mutate_metals_fun(CAS=CAS_NO,Result=RESULT,Analyte=PARAMETER,UNIT)%>%
 left_join(PAHs_CAS,by=c("PARAMETER"="PAH"))%>%
 Full(.)%>%
-mutate_at(vars(ERM_Q,ERM_PEC_min_Q,PEC_Q,PEL_Q,ERL_Q),list(Over=over_the_limit))%>%
-mutate(LRM=exp(B0+B1)*log10(Result_SMH)%%(1+exp(B0+B1)*log10(Result_SMH)),
+left_join(DCLS_params %>% select(CBP_NAME,Salinity_regime),by=c("CBP_NAME"))%>%
+mutate(Salinity_regime=
+         case_when(
+  str_detect(CBP_NAME,"PRESS")~"TF",
+  str_detect(CBP_NAME,"VA15-0023D")~"HM",
+  TRUE~Salinity_regime))%>%
+mutate_at(vars(ERM_Q,ERM_PEC_min_Q,PEC_Q,PEL_Q,ERL_Q),list(Over=over_the_limit))#%>%
+#group_by(CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,YEAR)%>%
+#nest()
+
+d=Sed_Chem_all %>% mutate(Global_SMH=map(data, ~.x %>% 
+                                summarise_at(vars(ERM_Q,ERM_PEC_min_Q,PEC_Q,PEL_Q,ERL_Q),max)
+                                   list(~mean(.,na.rm=T), ~max(.,na.rm=T)))})
+
+                          
+                          summarise_all(funs(mean, median                          
+                          
+                          %>%
+mutate(LRM=exp(B0+B1*log10(Result_SMH))%%(1+exp(B0+B1*log10(Result_SMH))),
        LRM_Prob=ifelse(LRM==0,0,0.11+(0.33*LRM)+(0.4*LRM^2)))
 
+#gapminder_nested %>% 
+#  mutate(avg_lifeExp = map_dbl(data, ~{mean(.x$lifeExp)}))
 
-Sed_Chem_LRM=Sed_Chem_all %>% 
+Sed_Chem_LRM=Sed_Chem_all %>%
+  filter(CBP_NAME=="VA19-0030A",PARAMETER=="Arsenic")%>%
+  select(LRM,LRM_Prob)
+  mutate(LRM=exp(B0+B1)*log10(Result_SMH))
+  
   filter(YEAR %in% 2019) %>%
   group_by(CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,YEAR) %>%
   nest()%>%
   mutate(LRM_max=map_dbl(data,~.x %>% pluck("LRM") %>% max(.,na.rm=T)),
-         LRM=map_dbl(data,~.x %>% pluck("LRM")),
          LRM_Prob_max=map_dbl(data,~.x %>% pluck("LRM_Prob") %>% max(.,na.rm=T)))
 
 
@@ -96,12 +118,25 @@ Global_param_drops=c("Dieldrin","Heptachlor epoxide","gamma-BHC")
 Hyland_values = read_csv("App_lookup_Tables/Hyland_values.csv")
 Global_values = read_csv("App_lookup_Tables/Global_values.csv")
 
+over_the_limit=function(x){
+case_when(x>=1~"Exceedance",TRUE~NA_character_)}
+
 #--------------------------------------------------------------
 # 3 different ways of collecting mean quotients
 # Hyland is the one used in the sed chem WOE score 
 
-over_the_limit=function(x){
-case_when(x>=1~"Exceedance",TRUE~NA_character_)}
+
+ quos(PARAMETER %in% Hyland_values$Hyland)))
+       
+Sed_Chem_all %>%
+pmap(list(data,Type=c("SMH","Don"),
+  filters=c(quos(!PARAMETER %in% Global_param_drops),
+  quos(PARAMETER %in% Global_param_drops))),
+    ~{data %>% filter(.,!!!filters) %>%
+    mutate(.,Quotient_Type=Type)})
+
+
+
 
 Global_SMH=Sed_Chem_all %>%  
 group_by(CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,YEAR)%>%
@@ -152,9 +187,20 @@ Hyland_means=Quotients %>%
 #nest()%>%
 #mutate(Tops=map(data[cols_to_map],~mean(.,na.rm=T)))
 
+Sed_Chem_all %>%
+group_by(CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,YEAR) %>%
+nest()%>%
+
+ 
+function(df,col) {
+df %>%
+  mutate(Top5=map(data, ~.x %>% top_n(n = 5, wt = .data$ERM_Q)%>%
+  select(.data$PARAMETER,.data$ERM_Q))) 
+
+}
 
 ERM5=Sed_Chem_all %>% 
-Top_5_fun(ERM_Q)
+Top_5_fun(.data$ERM_Q)
 
 PEC5=Sed_Chem_all %>% 
 Top_5_fun(PEC_Q)

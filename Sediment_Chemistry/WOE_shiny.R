@@ -125,9 +125,9 @@ CEDS_Stations=pin_get("EstProbMon_DCLS", board = "rsconnect") %>%
 Tox_2016_2020=Tox_df %>%
   left_join(.,stations_fix2)%>%
   mutate(SMH_BIO_SIG=ifelse(CONTROL_CORRECTED_SURVIVAL>80,"N","Y"))%>%
-  Don_TOX_fun() %>%
-  NCCA_TOX_fun()%>%
-  Cal_TOX_fun()
+  Don_TOX_fun(.,stat_sig = SIGNFICANTLY_DIFFERENT_Y_OR_N,bio_sig = SMH_BIO_SIG) %>%
+  NCCA_TOX_fun(.,stat_sig = SIGNFICANTLY_DIFFERENT_Y_OR_N,bio_sig = SMH_BIO_SIG)%>%
+  Cal_TOX_fun(.,stat_sig = SIGNFICANTLY_DIFFERENT_Y_OR_N)
 
 pin(Tox_2016_2020,"EstProbMon_ToxTests_2016_20",board = "rsconnect")
 
@@ -443,7 +443,24 @@ select(1:4)
 
 "2A" "3B" "5A" "2B"
 
+#=====================
 
+# for some reason 2017 is missing sample dates
+
+mutate(YEAR=ifelse(str_detect(CBP_NAME,"VA17"),"2017",YEAR))%>%
+  mutate(YEAR=ifelse(str_detect(CBP_NAME,"PRESS") & is.na(YEAR)==T,"2017",YEAR))%>%
+  mutate(DATE_COLLECT=case_when(
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-1"~ lubridate::mdy("07/17/2017"),
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-Alt2"~ lubridate::mdy("07/25/2017"),
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-Alt3"~ lubridate::mdy("07/26/2017"),
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-4"~ lubridate::mdy("07/19/2017"),
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-5"~ lubridate::mdy("07/18/2017"),
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-10"~ lubridate::mdy("07/24/2017"),
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-11"~ lubridate::mdy("07/24/2017"),
+    is.na(DATE_COLLECT)==T & CBP_NAME=="PRESS-12"~ lubridate::mdy("07/18/2017"),
+    TRUE ~ DATE_COLLECT))
+
+pin(Sed_Chem,"EstProbMon_Sed_Chem_2015_2019",board="rsconnect")
 
 #============= Hyland and global Quotients=====================
 # means >0.1 indicate 75% chance of observing toxicity           
@@ -614,13 +631,27 @@ Ches_bay_2019_SMH=read_excel("~/RStudio_Test/VARIB/VARIBI5NCA_2019.xlsx") %>%
 #---------------------------------------------------------------------------------------------------------------
 
 Raw_Bugs_2019=Ches_bay_2019_SMH %>%
-  left_join(AMBI_ProbMon_2019,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc"))%>%
-  mutate(Year=2019) 
+left_join(AMBI_ProbMon_2019,by=c("Fdt_Sta_Id","Ana_Sam_Mrs_Container_Id_Desc"))%>%
+mutate(Year=2019) %>%
+distinct(CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,TOTAL_ABUND_EPI,.keep_all = T)
 
 
-Clean_bugs_2019=Raw_Bugs_2019%>%
-  bug_scores_fun(Basin=BASIN,CB=B_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`) %>%
-  dplyr::select(CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,B_IBI,MAIA_INDEX,EMAP_INDEX,MAMBI=`M-AMBI`,Matrix_score)
+
+bugs19_Ind=Raw_Bugs_2019 %>%
+select(Fdt_Sta_Id,CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,TAXA=Richness,INDIVIDUALS=TOTAL_ABUND_EPI,GLEASONS_D,SHANNON_H=SHANNON.x,
+PIELOUS=PIELOUS_EVENNESS_REP,TUBIFICIDAE,SPIONIDAE)
+
+Clean_bugs_2019=Raw_Bugs_2019 %>%
+bug_scores_fun(Basin=BASIN,CB=B_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`) %>%
+  dplyr::select(Fdt_Sta_Id,CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,
+                B_IBI,CB_Status,
+                MAIA_INDEX,MAIA_Status,
+                EMAP_INDEX,EMAP_Status,
+                MAMBI=`M-AMBI`,MAMBI_Status,
+                Matrix_score)
+
+WOE_bugs_2019=left_join(Clean_bugs_2019,bugs19_Ind)
+
 #---------------------------------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------------------------------
 
@@ -685,12 +716,20 @@ rename(DATE=DATE.x,REP_NUM=REP_NUM.x)%>%
 mutate(Year=2018)
 
 
+bugs18_Ind=Raw_Bugs_2018 %>% 
+select(Fdt_Sta_Id,CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,TAXA=Richness,INDIVIDUALS=TOTAL_ABUND_EPI,GLEASONS_D,SHANNON_H=SHANNON.x,
+                                    PIELOUS=PIELOUS_EVENNESS_REP,TUBIFICIDAE,SPIONIDAE)
+
 Clean_bugs_2018=Raw_Bugs_2018 %>%
-bug_scores_fun(Basin=BASIN,CB=B_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`) %>%
-dplyr::select(CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,B_IBI,MAIA_INDEX,EMAP_INDEX,MAMBI=`M-AMBI`,Matrix_score)
+bug_scores_fun(Basin=BASIN,CB=B_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`)%>%
+dplyr::select(Fdt_Sta_Id,CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,
+              B_IBI,CB_Status,
+              MAIA_INDEX,MAIA_Status,
+              EMAP_INDEX,EMAP_Status,
+              MAMBI=`M-AMBI`,MAMBI_Status,
+              Matrix_score)
 
-
-
+WOE_bugs_2018=left_join(Clean_bugs_2018,bugs18_Ind)
 # ============== 2017 bugs=========================================
 
 stations_fix2 =read_csv("stations_fix.csv")
@@ -779,13 +818,28 @@ dplyr::select(Fdt_Sta_Id,sort(colnames(.)))%>%
 mutate(Year=2017)
 
 
+bugs17_Ind=Raw_Bugs_2017 %>% 
+  select(Fdt_Sta_Id,CBP_NAME,Ana_Sam_Mrs_Container_Id_Desc,TAXA=Richness,INDIVIDUALS=TOTAL_ABUND_EPI,GLEASONS_D,SHANNON_H=SHANNON,
+         PIELOUS=PIELOUS_EVENNESS_REP,TUBIFICIDAE,SPIONIDAE)
+
+
 Clean_bugs_2017=Raw_Bugs_2017 %>%
 bug_scores_fun(Basin=BASIN,CB=CB_IBI,MAIA=MAIA_INDEX,EMAP=EMAP_INDEX,MAMBI=`M-AMBI`) %>%
-dplyr::select(CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,B_IBI,MAIA_INDEX,EMAP_INDEX,MAMBI=`M-AMBI`,Matrix_score)
+dplyr::select(Fdt_Sta_Id,CBP_NAME,Year,Ana_Sam_Mrs_Container_Id_Desc,BASIN,
+              B_IBI=CB_IBI,CB_Status,
+              MAIA_INDEX,MAIA_Status,
+              EMAP_INDEX,EMAP_Status,
+              MAMBI=`M-AMBI`,MAMBI_Status,
+              Matrix_score)
 
 
+WOE_bugs_2017=left_join(Clean_bugs_2017,bugs17_Ind)
 
 
+WOE_bugs_2017_19=bind_rows(WOE_bugs_2017,WOE_bugs_2018,WOE_bugs_2019)
+
+pin(WOE_bugs_2017_19,"EstProbMon_Bugs_2017_19",board="rsconnect")
+pin_remove("EstProbMon_Bugs_2016_2019",board="rsconnect")
 #========================== 2016 bugs=====================================
 
 sixteen=
