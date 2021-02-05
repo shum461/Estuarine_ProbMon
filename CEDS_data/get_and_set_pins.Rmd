@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 
 library(DBI)
 library(tidyverse)
@@ -133,6 +133,91 @@ arrange(desc(YEAR))
 
 pin(emma_stations,"EstProbMon_Stations",board = "rsconnect")
 
+
+
+#========================== Fish Tissue====================
+
+#=======================================================================
+#=======================================================================
+
+# Fish results just have Parm code, needed to join to Wqm_Storet_Parm_Cds_Codes_Wqm_View table
+# to get the names 
+
+metals_sv=pin_get("FishTissue_Metals_SV",board="rsconnect")
+#------------------------------------------------------------------
+Fish_Fields=pool %>% 
+tbl("Wqm_Tissue_Sediment_Fields_View") %>%
+as_tibble()
+
+pin(Fish_Fields,"FishTissue_Field_data",board="rsconnect")
+#----------------------------------------------------------------------------
+Spc_Parameter_Code=pool %>%
+tbl("Wqm_Storet_Parm_Cds_Codes_Wqm_View") %>%
+as_tibble()
+
+pin(Spc_Parameter_Code,"WQM-Spc_Parameter_Codes",board="rsconnect",description="Parameter Codes and descriptions")
+#----------------------------------
+#-------------------------------
+
+# metals in fish tissue 
+
+Fish_Results=pool %>% 
+tbl("Wqm_Tissue_Sediment_Results_View") %>%
+as_tibble()%>% 
+left_join(Spc_Parameter_Code,
+          by=c("Tsr_Pg_Spc_Parameter_Code"="Spc_Parameter_Code")) %>%
+mutate(Tsr_Fss_Fsf_Id=as.numeric(Tsr_Fss_Fsf_Id))%>%
+left_join(Fish_Fields,by=c("Tsr_Fss_Fsf_Id"="Fsf_Id"))%>%
+left_join(metals_sv,by=c("Wqm_Char_Name"="Metal"))
+
+#------------------------------------------------------------------
+Fish_Samples=pool %>% 
+tbl("Wqm_Tissue_Sediment_Samples_View")%>%
+as_tibble()
+
+# Adding full fish names from Species_cds to Wqm_Predator_Species_View
+Fish_Species_cds=pool %>% 
+tbl("Wqm_Species_Cds_Codes_Wqm_View")%>%
+as_tibble() %>%
+select(Spe_Code_Num,Spe_Common_Name)
+
+Fish_Predator=pool %>% 
+tbl("Wqm_Predator_Species_View")%>%
+as_tibble()%>%
+left_join(Fish_Species_cds,by=c("Psp_Spe_Code_Num"="Spe_Code_Num"))
+#-----------------------------------------------------------------------
+
+Fish_Species=pool %>% 
+tbl("Wqm_Species_Details_View")%>%
+filter(Spd_Psp_Fsf_Id %in% !!Fish_Results$Tsr_Fss_Fsf_Id)%>%
+as_tibble()%>%
+distinct(Spd_Psp_Id,Spd_Psp_Fsf_Id,.keep_all = T)
+
+pin(Fish_Species,"FishTissue_Species",board="rsconnect",description=" joined with Wqm_Species_Cds_Codes_Wqm_View by Spd_Psp_Spe_Id=Spe_Code_Num")
+
+
+Fish_GIS=pool %>% 
+tbl("WQM_Sta_GIS_View")%>%
+filter(Station_Id %in% !!Fish_Results$Fsf_Sta_Id) %>%
+as_tibble() %>% 
+select(Station_Id,Latitude,Longitude,Huc6_Vahu6,Subbasin,Deq_Region)
+
+#--------------------------------------------------------------------
+# join filtered species to results what number fish sp_Id and what batch sf_Id
+Fish_Results2=Fish_Results %>%
+#distinct(Tsr_Fss_Psp_Id,Tsr_Fss_Fsf_Id,.keep_all = T)%>%
+left_join(Fish_Predator,c("Tsr_Fss_Fsf_Id"="Psp_Fsf_Id","Tsr_Fss_Psp_Id"="Psp_Id")) %>%
+left_join(Fish_GIS,by=c("Fsf_Sta_Id"="Station_Id")) %>%
+dplyr::select(Fsf_Sta_Id,Fsf_Coll_Datetime,Ssc_Description,Tsr_Id,Spe_Common_Name,Avg_Spd_Species_Length,Avg_Spd_Species_Weight,Wqm_Char_Name,Tsr_Value,Tsr_Mdl,Tsr_Qa_Flag,Tsr_Pg_Spc_Parameter_Code,
+DEQ_New_SV,DEQ_Old_SV,VDH_SV,Abv,Latitude,Longitude,Huc6_Vahu6,Subbasin,Deq_Region) %>%
+mutate(Year=lubridate::year(Fsf_Coll_Datetime))%>%
+mutate(DEQ_Old=ifelse(Tsr_Value>DEQ_Old_SV,"YES","NO"),
+DEQ_New=ifelse(Tsr_Value>DEQ_New_SV,"YES","NO"),
+VDH=ifelse(Tsr_Value>VDH_SV,"YES","NO"))
+  
+#left_join(Fish_Species,by=c("Tsr_Fss_Fsf_Id"="Spd_Psp_Fsf_Id","Tsr_Fss_Psp_Id"="Spd_Psp_Id")) %>%
+
+pin(Fish_Results2,"FishTissue_Metals_results",board="rsconnect") 
 
 
 # Stations=pool %>% tbl("Wqm_Stations_View")%>
