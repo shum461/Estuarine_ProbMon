@@ -51,6 +51,12 @@ filter(!Ana_Sam_Mrs_Container_Id_Desc %in% "EB")
 # PERCENT_SURVIVAL col is just for the "A" replicate. Use "MEAN_PERCENT_SURVIVAL" for overall test
 # 2-JMS087.11	VA16-033A, VA06-0083A
 
+# test old workbooks
+
+
+
+
+
 
 Hyalella=c("TN-16-312","TN-17-238","TN-17-296","TN-18-593","TN-19-495","TN-19-523")
 
@@ -839,7 +845,9 @@ WOE_bugs_2017=left_join(Clean_bugs_2017,bugs17_Ind)
 WOE_bugs_2017_19=bind_rows(WOE_bugs_2017,WOE_bugs_2018,WOE_bugs_2019)
 
 pin(WOE_bugs_2017_19,"EstProbMon_Bugs_2017_19",board="rsconnect")
+
 pin_remove("EstProbMon_Bugs_2016_2019",board="rsconnect")
+
 #========================== 2016 bugs=====================================
 
 sixteen=
